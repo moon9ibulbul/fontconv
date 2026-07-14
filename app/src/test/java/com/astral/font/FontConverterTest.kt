@@ -10,7 +10,7 @@ class FontConverterTest {
 
     @Test
     fun testFontConverter_Italic() {
-        val mockFontBytes = createMockFontBytes()
+        val mockFontBytes = createMockFontBytes(includeGlyf = false)
         val inputStream = ByteArrayInputStream(mockFontBytes)
         val outputStream = ByteArrayOutputStream()
 
@@ -27,7 +27,7 @@ class FontConverterTest {
 
     @Test
     fun testFontConverter_Bold() {
-        val mockFontBytes = createMockFontBytes()
+        val mockFontBytes = createMockFontBytes(includeGlyf = false)
         val inputStream = ByteArrayInputStream(mockFontBytes)
         val outputStream = ByteArrayOutputStream()
 
@@ -44,7 +44,7 @@ class FontConverterTest {
 
     @Test
     fun testFontConverter_BoldItalic() {
-        val mockFontBytes = createMockFontBytes()
+        val mockFontBytes = createMockFontBytes(includeGlyf = false)
         val inputStream = ByteArrayInputStream(mockFontBytes)
         val outputStream = ByteArrayOutputStream()
 
@@ -59,12 +59,62 @@ class FontConverterTest {
         verifyFontAttributes(resultBytes, FontConverter.Style.BOLD_ITALIC)
     }
 
-    private fun createMockFontBytes(): ByteArray {
+    @Test
+    fun testFontConverter_WithGlyfAndHmtx() {
+        val mockFontBytes = createMockFontBytes(includeGlyf = true)
+        val inputStream = ByteArrayInputStream(mockFontBytes)
+        val outputStream = ByteArrayOutputStream()
+
+        // Convert mock font with glyf to Bold Italic
+        FontConverter.convertFont(inputStream, outputStream, FontConverter.Style.BOLD_ITALIC)
+        val resultBytes = outputStream.toByteArray()
+
+        assertNotNull(resultBytes)
+        assertTrue(resultBytes.size > 12)
+
+        // Verify font attributes and verify glyf/hmtx tables are updated
+        verifyFontAttributes(resultBytes, FontConverter.Style.BOLD_ITALIC)
+
+        // Find hmtx table and verify metrics scaled
+        val numTables = readUInt16(resultBytes, 4)
+        var index = 12
+        var foundHmtx = false
+        var foundGlyf = false
+        val foundTags = ArrayList<String>()
+        for (i in 0 until numTables) {
+            val tag = String(resultBytes, index, 4, StandardCharsets.US_ASCII)
+            foundTags.add(tag)
+            val offset = readUInt32(resultBytes, index + 8).toInt()
+            val length = readUInt32(resultBytes, index + 12).toInt()
+            val data = resultBytes.copyOfRange(offset, offset + length)
+
+            if (tag == "hmtx") {
+                foundHmtx = true
+                // First glyph metric
+                val advanceWidth = readUInt16(data, 0)
+                val lsb = readInt16(data, 2)
+                // Originally width 1000, lsb 50. Bold Italic: scaled by 1.15 -> width 1150, lsb is around 57 or 58
+                assertEquals("advanceWidth mismatch: ", 1150, advanceWidth)
+                assertTrue("lsb mismatch: got $lsb", lsb == 57 || lsb == 58)
+            }
+            if (tag == "glyf") {
+                foundGlyf = true
+                assertTrue(length > 0)
+            }
+            index += 16
+        }
+        assertTrue("hmtx not found in tags: $foundTags", foundHmtx)
+        assertTrue("glyf not found in tags: $foundTags", foundGlyf)
+    }
+
+    private fun createMockFontBytes(includeGlyf: Boolean): ByteArray {
         val bos = ByteArrayOutputStream()
+
+        val numTables = if (includeGlyf) 9 else 4
 
         // 1. SFNT Offset Table (12 bytes)
         writeUInt32Bytes(bos, 0x00010000L) // sfntVersion
-        writeUInt16Bytes(bos, 4) // numTables (head, OS/2, post, name)
+        writeUInt16Bytes(bos, numTables) // numTables
         writeUInt16Bytes(bos, 64) // searchRange
         writeUInt16Bytes(bos, 2) // entrySelector
         writeUInt16Bytes(bos, 8) // rangeShift
@@ -73,6 +123,7 @@ class FontConverterTest {
         val headData = ByteArray(54)
         writeUInt32(headData, 12, 0x5F0F3CF5L) // magicNumber
         writeUInt16(headData, 44, 0) // macStyle: Regular
+        writeUInt16(headData, 50, 0) // indexToLocFormat: short format
 
         val os2Data = ByteArray(64)
         writeUInt16(os2Data, 4, 400) // usWeightClass: Regular
@@ -111,15 +162,64 @@ class FontConverterTest {
         nameDataStream.write(str2)
         val nameData = nameDataStream.toByteArray()
 
-        // 2. Write Table Records and Table Data sequential alignment
-        val tables = mapOf(
-            "OS/2" to os2Data,
-            "head" to headData,
-            "name" to nameData,
-            "post" to postData
-        )
+        // Optional Tables for Glyphs
+        val maxpData = ByteArray(32)
+        writeUInt16(maxpData, 4, 1) // numGlyphs = 1
 
-        var offset = 12 + 4 * 16
+        val locaData = ByteArray(4)
+        writeUInt16(locaData, 0, 0) // offset 0
+        writeUInt16(locaData, 2, 17) // offset 34 bytes (divided by 2 is 17)
+
+        // glyfData contains one simple glyph:
+        // numberOfContours = 1, xMin=0, yMin=0, xMax=100, yMax=100
+        val glyfStream = ByteArrayOutputStream()
+        writeShortBytes(glyfStream, 1) // numberOfContours
+        writeShortBytes(glyfStream, 0) // xMin
+        writeShortBytes(glyfStream, 0) // yMin
+        writeShortBytes(glyfStream, 100) // xMax
+        writeShortBytes(glyfStream, 100) // yMax
+        writeUInt16Bytes(glyfStream, 3) // endPtsOfContours[0] = 3 (4 points total)
+        writeUInt16Bytes(glyfStream, 0) // instructionLength = 0
+        // Flags: 4 points. Let's make flag 0x01 (On Curve), no repeats, no short/same.
+        // This means each delta is a 16-bit signed short.
+        glyfStream.write(0x01)
+        glyfStream.write(0x01)
+        glyfStream.write(0x01)
+        glyfStream.write(0x01)
+        // X coordinates relative: 10, 20, 30, 40 -> absolute: 10, 30, 60, 100
+        writeShortBytes(glyfStream, 10)
+        writeShortBytes(glyfStream, 20)
+        writeShortBytes(glyfStream, 30)
+        writeShortBytes(glyfStream, 40)
+        // Y coordinates relative: 10, 20, 30, 40 -> absolute: 10, 30, 60, 100
+        writeShortBytes(glyfStream, 10)
+        writeShortBytes(glyfStream, 20)
+        writeShortBytes(glyfStream, 30)
+        writeShortBytes(glyfStream, 40)
+        val glyfData = glyfStream.toByteArray()
+
+        val hheaData = ByteArray(36)
+        writeUInt16(hheaData, 34, 1) // numberOfHMetrics = 1
+
+        val hmtxData = ByteArray(4)
+        writeUInt16(hmtxData, 0, 1000) // advanceWidth = 1000
+        writeUInt16(hmtxData, 2, 50) // lsb = 50
+
+        // 2. Write Table Records and Table Data sequential alignment
+        val tables = LinkedHashMap<String, ByteArray>()
+        tables["OS/2"] = os2Data
+        tables["head"] = headData
+        tables["name"] = nameData
+        tables["post"] = postData
+        if (includeGlyf) {
+            tables["maxp"] = maxpData
+            tables["loca"] = locaData
+            tables["glyf"] = glyfData
+            tables["hhea"] = hheaData
+            tables["hmtx"] = hmtxData
+        }
+
+        var offset = 12 + numTables * 16
         val recordStream = ByteArrayOutputStream()
         val dataStream = ByteArrayOutputStream()
 
@@ -254,6 +354,11 @@ class FontConverterTest {
         return (b1 shl 8) or b2
     }
 
+    private fun readInt16(data: ByteArray, offset: Int): Int {
+        val val16 = readUInt16(data, offset)
+        return if (val16 >= 32768) val16 - 65536 else val16
+    }
+
     private fun readUInt32(data: ByteArray, offset: Int): Long {
         val b1 = data[offset].toLong() and 0xFF
         val b2 = data[offset + 1].toLong() and 0xFF
@@ -275,6 +380,11 @@ class FontConverterTest {
     }
 
     private fun writeUInt16Bytes(stream: ByteArrayOutputStream, value: Int) {
+        stream.write((value ushr 8) and 0xFF)
+        stream.write(value and 0xFF)
+    }
+
+    private fun writeShortBytes(stream: ByteArrayOutputStream, value: Int) {
         stream.write((value ushr 8) and 0xFF)
         stream.write(value and 0xFF)
     }

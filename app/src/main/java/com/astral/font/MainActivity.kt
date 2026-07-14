@@ -50,7 +50,11 @@ class MainActivity : AppCompatActivity() {
             importedFontUri = uri
             importedFontName = getFileNameFromUri(uri) ?: "font_file.ttf"
             textImportedFontName.text = importedFontName
-            showSnackbar("Font imported successfully: $importedFontName")
+            if (importedFontName.endsWith(".otf", ignoreCase = true)) {
+                showSnackbar("OTF imported: Visual slanting/bolding is supported on TTF. OTF will only update metadata.")
+            } else {
+                showSnackbar("Font imported successfully: $importedFontName")
+            }
         }
     }
 

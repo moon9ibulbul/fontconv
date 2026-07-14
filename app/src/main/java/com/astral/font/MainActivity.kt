@@ -148,9 +148,9 @@ class MainActivity : AppCompatActivity() {
 
             if (successCount == targetStyles.size) {
                 val fileListStr = savedFiles.joinToString(", ")
-                showLongToast("Successfully converted all styles: $fileListStr\nSaved in Documents/AstralFont")
+                showLongToast("Successfully converted all styles: $fileListStr\nSaved in Downloads/AstralFont")
             } else if (successCount > 0) {
-                showLongToast("Converted $successCount of ${targetStyles.size} styles. Saved in Documents/AstralFont")
+                showLongToast("Converted $successCount of ${targetStyles.size} styles. Saved in Downloads/AstralFont")
             } else {
                 showSnackbar("Failed to convert font. Please make sure it's a valid TTF/OTF file.")
             }
@@ -178,7 +178,7 @@ class MainActivity : AppCompatActivity() {
             val contentValues = ContentValues().apply {
                 put(MediaStore.MediaColumns.DISPLAY_NAME, outFileName)
                 put(MediaStore.MediaColumns.MIME_TYPE, if (ext == "otf") "font/otf" else "font/ttf")
-                put(MediaStore.MediaColumns.RELATIVE_PATH, "${Environment.DIRECTORY_DOCUMENTS}/AstralFont")
+                put(MediaStore.MediaColumns.RELATIVE_PATH, "${Environment.DIRECTORY_DOWNLOADS}/AstralFont")
             }
             // Use MediaStore.Downloads.EXTERNAL_CONTENT_URI on Android 10+
             val uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, contentValues)
@@ -203,7 +203,7 @@ class MainActivity : AppCompatActivity() {
                 null
             }
         } else {
-            val docDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS)
+            val docDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
             val targetDir = File(docDir, "AstralFont")
             if (!targetDir.exists()) {
                 targetDir.mkdirs()

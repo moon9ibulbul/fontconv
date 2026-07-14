@@ -93,9 +93,9 @@ class FontConverterTest {
                 // First glyph metric
                 val advanceWidth = readUInt16(data, 0)
                 val lsb = readInt16(data, 2)
-                // Originally width 1000, lsb 50. Bold Italic: scaled by 1.15 -> width 1150, lsb is around 57 or 58
-                assertEquals("advanceWidth mismatch: ", 1150, advanceWidth)
-                assertTrue("lsb mismatch: got $lsb", lsb == 57 || lsb == 58)
+                // Originally width 1000, lsb 50. Bold Italic: scaled by 1.08 + 35 -> width 1115, lsb is around 37 or 38
+                assertEquals("advanceWidth mismatch: ", 1115, advanceWidth)
+                assertTrue("lsb mismatch: got $lsb", lsb == 37 || lsb == 38)
             }
             if (tag == "glyf") {
                 foundGlyf = true

@@ -412,24 +412,54 @@ object FontConverter {
                     yCoordinates[p] = currentY
                 }
 
-                // Apply Outline Transformations
-                for (p in 0 until numPoints) {
-                    val originalX = xCoordinates[p].toDouble()
-                    val originalY = yCoordinates[p].toDouble()
-                    var newX = originalX
+                // Apply Outline Transformations: Bold (normal-vector expansion) first, then Italic (slanting)
+                if (style == Style.BOLD || style == Style.BOLD_ITALIC) {
+                    val unitsPerEm = readUInt16(headRecord.data, 18)
+                    val scaleFactor = unitsPerEm.toDouble() / 1000.0
+                    val strengthX = 35.0 * scaleFactor
+                    val strengthY = 10.0 * scaleFactor
 
-                    when (style) {
-                        Style.ITALIC -> {
-                            newX = originalX + originalY * 0.212
+                    // Store coordinate shift values for each point
+                    val shiftX = DoubleArray(numPoints)
+                    val shiftY = DoubleArray(numPoints)
+
+                    var startIdx = 0
+                    for (c in 0 until numberOfContours) {
+                        val endIdx = endPtsOfContours[c]
+                        if (endIdx < startIdx || endIdx >= numPoints) break
+
+                        for (ptIdx in startIdx..endIdx) {
+                            val prevIdx = if (ptIdx == startIdx) endIdx else ptIdx - 1
+                            val nextIdx = if (ptIdx == endIdx) startIdx else ptIdx + 1
+
+                            val tx = xCoordinates[nextIdx] - xCoordinates[prevIdx]
+                            val ty = yCoordinates[nextIdx] - yCoordinates[prevIdx]
+
+                            val len = Math.hypot(tx.toDouble(), ty.toDouble())
+                            if (len > 0.0) {
+                                val nx = -ty / len
+                                val ny = tx / len
+                                shiftX[ptIdx] = nx * strengthX
+                                shiftY[ptIdx] = ny * strengthY
+                            }
                         }
-                        Style.BOLD -> {
-                            newX = originalX * 1.15
-                        }
-                        Style.BOLD_ITALIC -> {
-                            newX = (originalX * 1.15) + originalY * 0.212
-                        }
+                        startIdx = endIdx + 1
                     }
-                    xCoordinates[p] = Math.round(newX).toInt()
+
+                    // Apply fatter strokes and a small horizontal scale (1.05) to give spacing
+                    for (ptIdx in 0 until numPoints) {
+                        val expandedX = xCoordinates[ptIdx] * 1.05 + shiftX[ptIdx]
+                        val expandedY = yCoordinates[ptIdx] + shiftY[ptIdx]
+                        xCoordinates[ptIdx] = Math.round(expandedX).toInt()
+                        yCoordinates[ptIdx] = Math.round(expandedY).toInt()
+                    }
+                }
+
+                if (style == Style.ITALIC || style == Style.BOLD_ITALIC) {
+                    for (ptIdx in 0 until numPoints) {
+                        val slantedX = xCoordinates[ptIdx] + yCoordinates[ptIdx] * 0.212
+                        xCoordinates[ptIdx] = Math.round(slantedX).toInt()
+                    }
                 }
 
                 // Recalculate Bounding Box
@@ -489,13 +519,13 @@ object FontConverter {
                 val compBytes = glyphBytes.clone()
                 val newXMin = when (style) {
                     Style.ITALIC -> xMin + yMin * 0.212
-                    Style.BOLD -> xMin * 1.15
-                    Style.BOLD_ITALIC -> (xMin * 1.15) + yMin * 0.212
+                    Style.BOLD -> xMin * 1.05 - 20
+                    Style.BOLD_ITALIC -> (xMin * 1.05 - 20) + yMin * 0.212
                 }
                 val newXMax = when (style) {
                     Style.ITALIC -> xMax + yMax * 0.212
-                    Style.BOLD -> xMax * 1.15
-                    Style.BOLD_ITALIC -> (xMax * 1.15) + yMax * 0.212
+                    Style.BOLD -> xMax * 1.05 + 20
+                    Style.BOLD_ITALIC -> (xMax * 1.05 + 20) + yMax * 0.212
                 }
                 writeShort(compBytes, 2, Math.round(newXMin).toInt())
                 writeShort(compBytes, 6, Math.round(newXMax).toInt())
@@ -549,13 +579,9 @@ object FontConverter {
                     advanceWidth = Math.round(advanceWidth * 1.05).toInt()
                     lsb = Math.round(lsb * 1.05).toInt()
                 }
-                Style.BOLD -> {
-                    advanceWidth = Math.round(advanceWidth * 1.15).toInt()
-                    lsb = Math.round(lsb * 1.15).toInt()
-                }
-                Style.BOLD_ITALIC -> {
-                    advanceWidth = Math.round(advanceWidth * 1.15).toInt()
-                    lsb = Math.round(lsb * 1.15).toInt()
+                Style.BOLD, Style.BOLD_ITALIC -> {
+                    advanceWidth = Math.round(advanceWidth * 1.08 + 35).toInt()
+                    lsb = Math.round(lsb * 1.05 - 15).toInt()
                 }
             }
 
@@ -573,11 +599,8 @@ object FontConverter {
                 Style.ITALIC -> {
                     lsb = Math.round(lsb * 1.05).toInt()
                 }
-                Style.BOLD -> {
-                    lsb = Math.round(lsb * 1.15).toInt()
-                }
-                Style.BOLD_ITALIC -> {
-                    lsb = Math.round(lsb * 1.15).toInt()
+                Style.BOLD, Style.BOLD_ITALIC -> {
+                    lsb = Math.round(lsb * 1.05 - 15).toInt()
                 }
             }
 

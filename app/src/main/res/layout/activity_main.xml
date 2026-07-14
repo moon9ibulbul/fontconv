@@ -4,7 +4,7 @@
     xmlns:tools="http://tools.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#F8F9FA"
+    android:background="?android:attr/colorBackground"
     tools:context=".MainActivity">
 
     <!-- Scrollable content area -->
@@ -25,7 +25,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="24dp"
                 android:text="AstralFont"
-                android:textColor="#212529"
+                android:textColor="?attr/colorOnBackground"
                 android:textSize="32sp"
                 android:textStyle="bold"
                 app:layout_constraintStart_toStartOf="parent"
@@ -36,8 +36,8 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="4dp"
-                android:text="Convert your .ttf and .otf fonts to multiple styles instantly"
-                android:textColor="#6C757D"
+                android:text="Convert .ttf fonts to multiple styles"
+                android:textColor="?attr/colorOnSurfaceVariant"
                 android:textSize="14sp"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toBottomOf="@id/textTitle" />
@@ -50,8 +50,9 @@
                 android:layout_marginTop="32dp"
                 app:cardCornerRadius="16dp"
                 app:cardElevation="0dp"
-                app:strokeColor="#E9ECEF"
+                app:strokeColor="?attr/colorOutlineVariant"
                 app:strokeWidth="1dp"
+                app:cardBackgroundColor="?attr/colorSurface"
                 app:layout_constraintTop_toBottomOf="@id/textSubtitle"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintEnd_toEndOf="parent">
@@ -68,7 +69,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="No font file imported"
-                        android:textColor="#495057"
+                        android:textColor="?attr/colorOnSurface"
                         android:textSize="16sp"
                         android:textStyle="bold"
                         android:gravity="center"
@@ -94,7 +95,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="32dp"
                 android:text="Select Styles to Convert"
-                android:textColor="#212529"
+                android:textColor="?attr/colorOnBackground"
                 android:textSize="16sp"
                 android:textStyle="bold"
                 app:layout_constraintTop_toBottomOf="@id/cardImport"
@@ -108,8 +109,9 @@
                 android:layout_marginTop="12dp"
                 app:cardCornerRadius="16dp"
                 app:cardElevation="0dp"
-                app:strokeColor="#E9ECEF"
+                app:strokeColor="?attr/colorOutlineVariant"
                 app:strokeWidth="1dp"
+                app:cardBackgroundColor="?attr/colorSurface"
                 app:layout_constraintTop_toBottomOf="@id/textOptionsTitle"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintEnd_toEndOf="parent">
@@ -125,13 +127,13 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:text="Italic"
-                        android:textColor="#495057"
+                        android:textColor="?attr/colorOnSurface"
                         android:textSize="16sp" />
 
                     <View
                         android:layout_width="match_parent"
                         android:layout_height="1dp"
-                        android:background="#E9ECEF"
+                        android:background="?attr/colorOutlineVariant"
                         android:layout_marginVertical="8dp" />
 
                     <com.google.android.material.checkbox.MaterialCheckBox
@@ -139,13 +141,13 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:text="Bold"
-                        android:textColor="#495057"
+                        android:textColor="?attr/colorOnSurface"
                         android:textSize="16sp" />
 
                     <View
                         android:layout_width="match_parent"
                         android:layout_height="1dp"
-                        android:background="#E9ECEF"
+                        android:background="?attr/colorOutlineVariant"
                         android:layout_marginVertical="8dp" />
 
                     <com.google.android.material.checkbox.MaterialCheckBox
@@ -153,7 +155,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:text="Bold Italic"
-                        android:textColor="#495057"
+                        android:textColor="?attr/colorOnSurface"
                         android:textSize="16sp" />
 
                 </LinearLayout>
@@ -201,7 +203,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
                     android:text="Converting font, please wait..."
-                    android:textColor="#6C757D"
+                    android:textColor="?attr/colorOnSurfaceVariant"
                     android:textSize="14sp" />
             </LinearLayout>
 
